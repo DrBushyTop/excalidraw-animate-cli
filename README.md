@@ -133,6 +133,33 @@ Defaults:
 - format: `svg`
 - theme: `light`
 
+## Screenshot
+
+Capture one PNG for one manifest target:
+
+```bash
+node dist/cli.js screenshot --manifest animation.json --target "Architecture" --output architecture.png --theme light
+```
+
+Required flags:
+
+- `--manifest`: path to the manifest file
+- `--target`: manifest target `name`
+- `--output`: output PNG path
+- `--theme`: `light` or `dark`
+
+Optional timing override:
+
+```bash
+node dist/cli.js screenshot --manifest animation.json --target "Architecture" --output architecture-step.png --theme light --at-ms 1200
+```
+
+Notes:
+
+- screenshot selection is manifest-backed; `--target` must match a target `name` from the manifest
+- without `--at-ms`, the screenshot is captured at the target's finished frame
+- `--at-ms` captures a specific timeline moment instead
+
 ## Output Behavior
 
 - `svg`: one animated SVG per target
@@ -145,6 +172,7 @@ Defaults:
 ```bash
 node dist/cli.js inspect General.excalidraw --json
 node dist/cli.js manifest init General.excalidraw > animation.json
+node dist/cli.js screenshot --manifest animation.json --target "Architecture" --output architecture.png --theme light
 node dist/cli.js render animation.json --output-dir out --format svg --format mp4 --format gif --format pptx
 ```
 

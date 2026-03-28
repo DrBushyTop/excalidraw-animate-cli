@@ -5,31 +5,46 @@ import { pathToFileURL } from 'node:url';
 import { runInspect } from './commands/inspect.js';
 import { runManifestInit } from './commands/manifest-init.js';
 import { runRender } from './commands/render.js';
+import { runScreenshot } from './commands/screenshot.js';
 
 export interface CliCommandHandlers {
   runInspect: typeof runInspect;
   runManifestInit: typeof runManifestInit;
   runRender: typeof runRender;
+  runScreenshot: typeof runScreenshot;
 }
+
+const defaultHandlers = {
+  runInspect,
+  runManifestInit,
+  runRender,
+  runScreenshot,
+};
 
 export async function routeCli(
   argv: string[],
-  handlers: CliCommandHandlers = { runInspect, runManifestInit, runRender },
+  handlers: Partial<CliCommandHandlers> = {},
 ): Promise<number> {
+  const resolvedHandlers: CliCommandHandlers = { ...defaultHandlers, ...handlers };
   const [command, ...args] = argv;
 
   if (command === 'inspect') {
-    await handlers.runInspect(args);
+    await resolvedHandlers.runInspect(args);
     return 0;
   }
 
   if (command === 'manifest' && args[0] === 'init') {
-    await handlers.runManifestInit(args.slice(1));
+    await resolvedHandlers.runManifestInit(args.slice(1));
     return 0;
   }
 
   if (command === 'render') {
-    await handlers.runRender(args);
+    await resolvedHandlers.runRender(args);
+    return 0;
+  }
+
+  if (command === 'screenshot') {
+    await resolvedHandlers.runScreenshot(args);
     return 0;
   }
 
