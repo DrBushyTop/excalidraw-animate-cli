@@ -26,10 +26,11 @@ describe('createManifestFromInspection', () => {
     const { createManifestFromInspection } = await import('../src/manifest/schema.ts');
 
     const inspection = await inspectFile(generalExcalidrawPath);
-    const manifest = createManifestFromInspection(inspection);
+    const manifest = createManifestFromInspection(inspection, generalExcalidrawPath);
 
     expect(manifest).toEqual({
       version: 1,
+      sourceFile: generalExcalidrawPath,
       targets: inspection.frames.map((frame) => ({
         kind: 'frame',
         frameId: frame.id,
@@ -57,10 +58,11 @@ describe('createManifestFromInspection', () => {
     );
 
     const inspection = await inspectFile(filePath);
-    const manifest = createManifestFromInspection(inspection);
+    const manifest = createManifestFromInspection(inspection, filePath);
 
     expect(manifest).toEqual({
       version: 1,
+      sourceFile: filePath,
       targets: [{ kind: 'canvas', name: 'full-canvas' }],
     });
   });
@@ -81,10 +83,11 @@ describe('createManifestFromInspection', () => {
           elements: [],
         },
       ],
-    });
+    }, 'scene.excalidraw');
 
     expect(manifest).toEqual({
       version: 1,
+      sourceFile: 'scene.excalidraw',
       targets: [{ kind: 'frame', frameId: 'frame-1', name: 'frame-1' }],
     });
   });
@@ -104,6 +107,7 @@ describe('runManifestInit', () => {
 
     expect(parsed).toEqual({
       version: 1,
+      sourceFile: generalExcalidrawPath,
       targets: inspection.frames.map((frame) => ({
         kind: 'frame',
         frameId: frame.id,
@@ -135,6 +139,7 @@ describe('runManifestInit', () => {
     const output = stdoutWrite.mock.calls.map(([chunk]) => String(chunk)).join('');
     expect(JSON.parse(output)).toEqual({
       version: 1,
+      sourceFile: filePath,
       targets: [{ kind: 'canvas', name: 'full-canvas' }],
     });
   });
@@ -180,6 +185,7 @@ describe('runManifestInit', () => {
     const output = stdoutWrite.mock.calls.map(([chunk]) => String(chunk)).join('');
     expect(JSON.parse(output)).toEqual({
       version: 1,
+      sourceFile: filePath,
       targets: [{ kind: 'canvas', name: 'full-canvas' }],
     });
   });

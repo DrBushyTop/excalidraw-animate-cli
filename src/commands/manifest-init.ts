@@ -31,7 +31,7 @@ export async function runManifestInit(args: string[]): Promise<void> {
   }
 
   const inspection = await inspectFile(filePath);
-  const manifest = createManifestFromInspection(inspection);
+  const manifest = createManifestFromInspection(inspection, filePath);
 
   process.stdout.write(`${JSON.stringify(manifest, null, 2)}\n`);
 }
