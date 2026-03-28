@@ -1,1 +1,6 @@
 !reference-repo
+!General.excalidraw
+!node_modules
+!dist
+!.development
+!.opencode

@@ -1,1 +1,7 @@
 reference-repo
+General.excalidraw
+node_modules
+dist
+.development
+.tmp-manual-render/
+.DS_Store
