@@ -2,7 +2,7 @@
   "name": "excalidraw-animate-cli",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.18.3",
+  "packageManager": "bun@1.3.10",
   "bin": {
     "excalidraw-animate": "./dist/cli.js"
   },
