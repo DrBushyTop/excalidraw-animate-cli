@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { chromium } from 'playwright';
 
@@ -64,7 +65,7 @@ export async function captureSvgTimeline(
 
   try {
     const page = await browser.newPage();
-    await page.goto(`file://${htmlPath}`);
+    await page.goto(pathToFileURL(htmlPath).href);
 
     const dimensions = await page.evaluate(() => {
       const svg = document.querySelector('svg');

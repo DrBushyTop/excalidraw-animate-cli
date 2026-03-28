@@ -44,6 +44,15 @@ function runCommand(command: string, args: string[]): Promise<void> {
   });
 }
 
+async function canRun(command: string, args: string[]): Promise<boolean> {
+  try {
+    await runCommand(command, args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function resolveFfmpegPath(ffmpegPath?: string): Promise<string> {
   if (ffmpegPath) {
     if (isAbsoluteExecutablePath(ffmpegPath)) {
@@ -51,8 +60,15 @@ export async function resolveFfmpegPath(ffmpegPath?: string): Promise<string> {
       return ffmpegPath;
     }
 
-    await runCommand(ffmpegPath, ['-version']);
-    return ffmpegPath;
+    if (await canRun(ffmpegPath, ['-version'])) {
+      return ffmpegPath;
+    }
+
+    throw new Error(`ffmpeg is not available at ${ffmpegPath}`);
+  }
+
+  if (await canRun('ffmpeg', ['-version'])) {
+    return 'ffmpeg';
   }
 
   const candidates = ['/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg'];

@@ -114,67 +114,69 @@ export async function runRender(args: string[]): Promise<void> {
 
   const pptxSlides: PptxSlideAsset[] = [];
   const temporaryMp4Paths: string[] = [];
+  try {
+    for (const [index, target] of manifest.targets.entries()) {
+      const ordinal = String(index + 1).padStart(2, '0');
+      const baseName = `${ordinal}-${slugify(target.name)}`;
+      const renderResult = await renderTargetToSvg(scene, target, { theme: options.theme });
+      const outputPaths: string[] = [];
 
-  for (const [index, target] of manifest.targets.entries()) {
-    const ordinal = String(index + 1).padStart(2, '0');
-    const baseName = `${ordinal}-${slugify(target.name)}`;
-    const renderResult = await renderTargetToSvg(scene, target, { theme: options.theme });
-    const outputPaths: string[] = [];
-
-    if (options.formats.has('svg')) {
-      const svgPath = path.join(options.outputDir, `${baseName}.svg`);
-      await writeFile(svgPath, serializeSvg(renderResult.svgText), 'utf8');
-      outputPaths.push(svgPath);
-    }
-
-    const needsFrames = options.formats.has('mp4') || options.formats.has('gif') || options.formats.has('pptx');
-    if (needsFrames) {
-      const frameDir = path.join(options.outputDir, `.frames-${baseName}`);
-      const capture = await captureSvgTimeline(renderResult.svgText, {
-        finishedMs: renderResult.finishedMs,
-        outputDir: frameDir,
-      });
-
-      try {
-        let mp4Path: string | undefined;
-        if (options.formats.has('mp4') || options.formats.has('pptx')) {
-          mp4Path = options.formats.has('mp4')
-            ? path.join(options.outputDir, `${baseName}.mp4`)
-            : path.join(options.outputDir, `.pptx-${baseName}.mp4`);
-          await exportMp4(capture.framePattern, mp4Path, { ffmpegPath: options.ffmpegPath });
-          outputPaths.push(mp4Path);
-          if (!options.formats.has('mp4')) {
-            temporaryMp4Paths.push(mp4Path);
-          }
-        }
-
-        if (options.formats.has('gif')) {
-          const gifPath = path.join(options.outputDir, `${baseName}.gif`);
-          await exportGif(capture.framePattern, gifPath, { ffmpegPath: options.ffmpegPath });
-          outputPaths.push(gifPath);
-        }
-
-        if (options.formats.has('pptx') && mp4Path) {
-          pptxSlides.push({ name: target.name, mp4Path });
-        }
-      } finally {
-        await rm(frameDir, { recursive: true, force: true });
+      if (options.formats.has('svg')) {
+        const svgPath = path.join(options.outputDir, `${baseName}.svg`);
+        await writeFile(svgPath, serializeSvg(renderResult.svgText), 'utf8');
+        outputPaths.push(svgPath);
       }
+
+      const needsFrames = options.formats.has('mp4') || options.formats.has('gif') || options.formats.has('pptx');
+      if (needsFrames) {
+        const frameDir = path.join(options.outputDir, `.frames-${baseName}`);
+        try {
+          const capture = await captureSvgTimeline(renderResult.svgText, {
+            finishedMs: renderResult.finishedMs,
+            outputDir: frameDir,
+          });
+
+          let mp4Path: string | undefined;
+          if (options.formats.has('mp4') || options.formats.has('pptx')) {
+            mp4Path = options.formats.has('mp4')
+              ? path.join(options.outputDir, `${baseName}.mp4`)
+              : path.join(options.outputDir, `.pptx-${baseName}.mp4`);
+            await exportMp4(capture.framePattern, mp4Path, { ffmpegPath: options.ffmpegPath });
+            if (options.formats.has('mp4')) {
+              outputPaths.push(mp4Path);
+            } else {
+              temporaryMp4Paths.push(mp4Path);
+            }
+          }
+
+          if (options.formats.has('gif')) {
+            const gifPath = path.join(options.outputDir, `${baseName}.gif`);
+            await exportGif(capture.framePattern, gifPath, { ffmpegPath: options.ffmpegPath });
+            outputPaths.push(gifPath);
+          }
+
+          if (options.formats.has('pptx') && mp4Path) {
+            pptxSlides.push({
+              name: target.name,
+              mp4Path,
+              width: renderResult.width,
+              height: renderResult.height,
+            });
+          }
+        } finally {
+          await rm(frameDir, { recursive: true, force: true });
+        }
+      }
+
+      process.stdout.write(`${target.name}: ${outputPaths.map((outputPath) => path.basename(outputPath)).join(', ')}\n`);
     }
 
-    process.stdout.write(`${target.name}: ${outputPaths.map((outputPath) => path.basename(outputPath)).join(', ')}\n`);
-  }
-
-  if (options.formats.has('pptx')) {
-    const pptxPath = path.join(options.outputDir, 'animation.pptx');
-    try {
+    if (options.formats.has('pptx')) {
+      const pptxPath = path.join(options.outputDir, 'animation.pptx');
       await exportPptx(pptxSlides, pptxPath);
       process.stdout.write(`pptx: ${path.basename(pptxPath)}\n`);
-    } finally {
-      await Promise.all(temporaryMp4Paths.map((filePath) => rm(filePath, { force: true })));
     }
-    return;
+  } finally {
+    await Promise.all(temporaryMp4Paths.map((filePath) => rm(filePath, { force: true })));
   }
-
-  await Promise.all(temporaryMp4Paths.map((filePath) => rm(filePath, { force: true })));
 }

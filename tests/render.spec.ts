@@ -222,6 +222,61 @@ describe('runRender', () => {
     expect((await stat(pptxPath)).size).toBeGreaterThan(0);
   }, 180000);
 
+  it('cleans up frame directories when capture fails', async () => {
+    const { runRender } = await import('../src/commands/render.ts');
+    const captureModule = await import('../src/media/capture-svg-timeline.ts');
+    const dir = await createTempDir();
+    const sceneCopyPath = path.join(dir, 'scene.excalidraw');
+    const manifestPath = path.join(dir, 'animation.json');
+    const outputDir = path.join(dir, 'out');
+
+    vi.spyOn(captureModule, 'captureSvgTimeline').mockRejectedValue(new Error('capture failed'));
+
+    await writeFile(sceneCopyPath, await readFile(generalExcalidrawPath, 'utf8'), 'utf8');
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        version: 1,
+        sourceFile: './scene.excalidraw',
+        targets: [{ kind: 'frame', name: 'PRBOT 1', frameId: 'AID-kV87HzNPeQ2wtkSfY' }],
+      }),
+      'utf8',
+    );
+
+    await expect(
+      runRender([manifestPath, '--output-dir', outputDir, '--format', 'mp4']),
+    ).rejects.toThrow(/capture failed/i);
+
+    const files = await readdir(outputDir).catch(() => []);
+    expect(files.some((file) => file.startsWith('.frames-'))).toBe(false);
+  });
+
+  it('does not report temporary pptx-only mp4 files in stdout', async () => {
+    const { runRender } = await import('../src/commands/render.ts');
+    const dir = await createTempDir();
+    const sceneCopyPath = path.join(dir, 'scene.excalidraw');
+    const manifestPath = path.join(dir, 'animation.json');
+    const outputDir = path.join(dir, 'out');
+    const stdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await writeFile(sceneCopyPath, await readFile(generalExcalidrawPath, 'utf8'), 'utf8');
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        version: 1,
+        sourceFile: './scene.excalidraw',
+        targets: [{ kind: 'frame', name: 'PRBOT 1', frameId: 'AID-kV87HzNPeQ2wtkSfY' }],
+      }),
+      'utf8',
+    );
+
+    await runRender([manifestPath, '--output-dir', outputDir, '--format', 'pptx']);
+
+    const output = stdoutWrite.mock.calls.map(([chunk]) => String(chunk)).join('');
+    expect(output).toContain('pptx: animation.pptx');
+    expect(output).not.toContain('.pptx-');
+  }, 180000);
+
   it('fails with a clear error when ffmpeg is unavailable for video exports', async () => {
     const { runRender } = await import('../src/commands/render.ts');
     const dir = await createTempDir();
