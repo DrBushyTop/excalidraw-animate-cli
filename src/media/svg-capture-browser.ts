@@ -65,8 +65,9 @@ export async function setSvgTimeSeconds(page: Page, value: number): Promise<void
 export async function withSvgCapturePage<T>(
   svgText: string,
   callback: (page: Page, viewport: SvgCaptureViewport) => Promise<T>,
-  options: { htmlDir?: string } = {},
+  options: { htmlDir?: string; deviceScaleFactor?: number } = {},
 ): Promise<T> {
+  const deviceScaleFactor = options.deviceScaleFactor ?? 2;
   const temporaryHtmlDir = options.htmlDir == null
     ? await mkdtemp(path.join(os.tmpdir(), 'excalidraw-svg-capture-'))
     : undefined;
@@ -82,7 +83,8 @@ export async function withSvgCapturePage<T>(
   const browser = await chromium.launch({ headless: true });
 
   try {
-    const page = await browser.newPage();
+    const context = await browser.newContext({ deviceScaleFactor });
+    const page = await context.newPage();
     await page.goto(pathToFileURL(htmlPath).href);
 
     const viewport = await page.evaluate(() => {

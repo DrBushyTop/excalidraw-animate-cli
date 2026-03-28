@@ -20,7 +20,7 @@ export async function captureSvgTimeline(
   svgText: string,
   options: CaptureSvgTimelineOptions,
 ): Promise<CaptureSvgTimelineResult> {
-  const fps = options.fps ?? 12;
+  const fps = options.fps ?? 30;
   const finishedMs = validateCaptureTimeMs(options.finishedMs, 'finishedMs');
   const frameDir = options.outputDir ?? (await mkdtemp(path.join(os.tmpdir(), 'excalidraw-animate-frames-')));
   await mkdir(frameDir, { recursive: true });

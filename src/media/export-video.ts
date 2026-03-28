@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises';
+import { access, unlink } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -90,7 +90,7 @@ export async function exportMp4(
   options: VideoExportOptions = {},
 ): Promise<void> {
   const ffmpegPath = await resolveFfmpegPath(options.ffmpegPath);
-  const fps = String(options.fps ?? 12);
+  const fps = String(options.fps ?? 30);
 
   await runCommand(ffmpegPath, [
     '-y',
@@ -100,6 +100,12 @@ export async function exportMp4(
     framePattern,
     '-vf',
     'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+    '-c:v',
+    'libx264',
+    '-crf',
+    '18',
+    '-preset',
+    'slow',
     '-pix_fmt',
     'yuv420p',
     '-movflags',
@@ -114,14 +120,44 @@ export async function exportGif(
   options: VideoExportOptions = {},
 ): Promise<void> {
   const ffmpegPath = await resolveFfmpegPath(options.ffmpegPath);
-  const fps = String(options.fps ?? 12);
+  const fps = String(options.fps ?? 30);
 
-  await runCommand(ffmpegPath, [
-    '-y',
-    '-framerate',
-    fps,
-    '-i',
-    framePattern,
-    outputPath,
-  ]);
+  // Two-pass approach: first generate an optimized palette, then use it for the GIF.
+  // This produces dramatically better color quality than ffmpeg's default GIF encoding.
+  const palettePath = outputPath.replace(/\.gif$/i, '-palette.png');
+
+  try {
+    // Pass 1: generate palette
+    await runCommand(ffmpegPath, [
+      '-y',
+      '-framerate',
+      fps,
+      '-i',
+      framePattern,
+      '-vf',
+      'palettegen=max_colors=256:stats_mode=diff',
+      palettePath,
+    ]);
+
+    // Pass 2: encode GIF using the palette
+    await runCommand(ffmpegPath, [
+      '-y',
+      '-framerate',
+      fps,
+      '-i',
+      framePattern,
+      '-i',
+      palettePath,
+      '-lavfi',
+      'paletteuse=dither=sierra2_4a',
+      outputPath,
+    ]);
+  } finally {
+    // Clean up temporary palette file
+    try {
+      await unlink(palettePath);
+    } catch {
+      // Palette file may not exist if pass 1 failed.
+    }
+  }
 }
